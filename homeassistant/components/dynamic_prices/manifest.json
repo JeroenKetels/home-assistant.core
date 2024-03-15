@@ -1,0 +1,11 @@
+{
+  "domain": "dynamic_prices",
+  "name": "Update dynamic prices.",
+  "after_dependencies": ["http"],
+  "codeowners": ["@JeroenKetels"],
+  "config_flow": false,
+  "documentation": "https://www.home-assistant.io/integrations/dynamic_prices",
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "loggers": ["dynamic_prices"]
+}
