@@ -1,6 +1,6 @@
 """Sensor for Price Integration."""
 
-from datetime import UTC, datetime as dt
+from datetime import datetime as dt
 
 from numpy import mean
 
@@ -23,6 +23,7 @@ class PriceSensor(NumberEntity):
         self._attr_native_min_value = -999
         self.entity_id = f"{DOMAIN}.{key}"
         self._prices: list[float] = []
+        self._prices_today: list[float] = []
         self._intersections: list[tuple[float, str]] = []
         self._max = 0.0
         self._min = 0.0
@@ -38,9 +39,9 @@ class PriceSensor(NumberEntity):
 
         matches = list(
             filter(
-                lambda v: dt_util.now(UTC).date()
+                lambda v: dt_util.now().date()
                 == dt.fromisoformat(v.get("dateTime")).date()
-                and dt.fromisoformat(v.get("dateTime")).hour == dt_util.now(UTC).hour,
+                and dt.fromisoformat(v.get("dateTime")).hour == dt_util.now().hour,
                 self._hass.data[f"{DOMAIN}"],
             )
         )
@@ -58,23 +59,23 @@ class PriceSensor(NumberEntity):
         if self._hass.data.get(f"{DOMAIN}") is not None:
             self._prices = [x["price"] for x in self._hass.data.get(f"{DOMAIN}")]
 
-        prices_today = [
+        self._prices_today = [
             x["price"]
             for x in list(
                 filter(
-                    lambda v: dt_util.now(UTC).date()
+                    lambda v: dt_util.now().date()
                     == dt.fromisoformat(v.get("dateTime")).date(),
                     self._hass.data.get(f"{DOMAIN}"),
                 )
             )
         ]
 
-        if len(prices_today) > 0:
-            self._max = max(prices_today)
-        if len(prices_today) > 0:
-            self._avg = mean(prices_today)
-        if len(prices_today) > 0:
-            self._min = min(prices_today)
+        if len(self._prices_today) > 0:
+            self._max = max(self._prices_today)
+        if len(self._prices_today) > 0:
+            self._avg = mean(self._prices_today)
+        if len(self._prices_today) > 0:
+            self._min = min(self._prices_today)
 
         self._hass.data[f"{DOMAIN}_currentPriceSensor"] = self
 
@@ -87,6 +88,7 @@ class PriceSensor(NumberEntity):
             "avg": self._avg,
             "last_download": self._last_download,
             "current_area": self.current_area,
+            "prices_today": self._prices_today,
         }
 
     @property

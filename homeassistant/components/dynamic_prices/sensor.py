@@ -1,4 +1,5 @@
 """Platform for Eneco integration."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -8,7 +9,6 @@ import requests
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util import dt as dt_util
 
@@ -40,7 +40,10 @@ async def async_setup_platform(
     async def handle_tariefUpdate(call):
         """Handle the service call."""
         currentPriceSensor = getCurrentPriceSensor(hass)
-        currentPriceSensor.refresh()
+
+        if currentPriceSensor:
+            currentPriceSensor.refresh()
+
         return True
 
     async def handle_download(call):
@@ -82,7 +85,7 @@ async def async_setup_platform(
     hass.services.async_register(DOMAIN, "download", handle_download)
     hass.services.async_register(DOMAIN, "updateTarief", handle_tariefUpdate)
 
-    async_track_time_change(hass, handle_download, hour=8, minute=30)
+    hass.helpers.event.async_track_time_interval(handle_download, timedelta(hours=4))
 
     hass.helpers.event.async_track_time_interval(
         handle_tariefUpdate, timedelta(seconds=10)
