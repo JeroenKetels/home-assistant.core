@@ -48,23 +48,34 @@ async def async_setup_platform(
 
     async def handle_download(call):
         """Handle the service call."""
-        url = hass.data.get(URL_PARAM, URL_DEFAULT_VALUE)
+        urlYesterday = f"{hass.data.get(URL_PARAM, URL_DEFAULT_VALUE)}/{(dt_util.utcnow() - timedelta(days=1)).strftime('%Y-%m-%d')}?crt={dt_util.utcnow().timestamp()}"
+        urlToday = f"{hass.data.get(URL_PARAM, URL_DEFAULT_VALUE)}/{dt_util.utcnow().strftime('%Y-%m-%d')}?crt={dt_util.utcnow().timestamp()}"
+        urlTomorrow = f"{hass.data.get(URL_PARAM, URL_DEFAULT_VALUE)}/{(dt_util.utcnow() + timedelta(days=1)).strftime('%Y-%m-%d')}?crt={dt_util.utcnow().timestamp()}"
+
+        responseYesterday = await hass.async_add_executor_job(
+            requests.get,
+            urlYesterday,
+        )
 
         responseToday = await hass.async_add_executor_job(
             requests.get,
-            f"{url}/{dt_util.as_local(dt_util.now()).strftime('%Y-%m-%d')}?crt={dt_util.now().timestamp()}",
+            urlToday,
         )
 
         responseTomorrow = await hass.async_add_executor_job(
             requests.get,
-            f"{url}/{(dt_util.as_local(dt_util.now()) + timedelta(days=1)).strftime('%Y-%m-%d')}?crt={dt_util.now().timestamp()}",
+            urlTomorrow,
         )
 
-        if responseToday.ok and responseTomorrow.ok:
+        if responseToday.ok and responseTomorrow.ok and responseYesterday.ok:
             # store data for later use
-            hass.data[f"{DOMAIN}"] = responseToday.json() + responseTomorrow.json()
-        else:
-            hass.data[f"{DOMAIN}"] = responseToday.json()
+            hass.data[f"{DOMAIN}"] = (
+                responseYesterday.json()
+                + responseToday.json()
+                + responseTomorrow.json()
+            )
+        elif responseYesterday.ok and responseTomorrow.ok:
+            hass.data[f"{DOMAIN}"] = responseYesterday.json() + responseToday.json()
 
         currPriceSensor = getCurrentPriceSensor(hass)
         currPriceSensor.refresh()

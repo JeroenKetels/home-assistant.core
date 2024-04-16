@@ -24,7 +24,6 @@ class PriceSensor(NumberEntity):
         self.entity_id = f"{DOMAIN}.{key}"
         self._prices: list[float] = []
         self._prices_today: list[float] = []
-        self._intersections: list[tuple[float, str]] = []
         self._max = 0.0
         self._min = 0.0
         self._avg = 0.0
@@ -39,9 +38,10 @@ class PriceSensor(NumberEntity):
 
         matches = list(
             filter(
-                lambda v: dt_util.now().date()
-                == dt.fromisoformat(v.get("dateTime")).date()
-                and dt.fromisoformat(v.get("dateTime")).hour == dt_util.now().hour,
+                lambda v: dt_util.utcnow().date()
+                == dt_util.as_utc(dt.fromisoformat(v.get("dateTime"))).date()
+                and dt_util.as_utc(dt.fromisoformat(v.get("dateTime"))).hour
+                == dt_util.utcnow().hour,
                 self._hass.data[f"{DOMAIN}"],
             )
         )
@@ -59,16 +59,19 @@ class PriceSensor(NumberEntity):
         if self._hass.data.get(f"{DOMAIN}") is not None:
             self._prices = [x["price"] for x in self._hass.data.get(f"{DOMAIN}")]
 
-        self._prices_today = [
-            x["price"]
-            for x in list(
-                filter(
-                    lambda v: dt_util.now().date()
-                    == dt.fromisoformat(v.get("dateTime")).date(),
-                    self._hass.data.get(f"{DOMAIN}"),
+        if self._hass.data.get(f"{DOMAIN}"):
+            self._prices_today = [
+                x["price"]
+                for x in list(
+                    filter(
+                        lambda v: dt_util.as_local(dt_util.utcnow()).date()
+                        == dt_util.as_local(dt.fromisoformat(v.get("dateTime"))).date(),
+                        self._hass.data.get(f"{DOMAIN}"),
+                    )
                 )
-            )
-        ]
+            ]
+        else:
+            self._prices_today = []
 
         if len(self._prices_today) > 0:
             self._max = max(self._prices_today)
@@ -130,29 +133,12 @@ class PriceSensor(NumberEntity):
         self._prices = value
 
     @property
-    def intersections(self):
-        """Return Intersections Property."""
-        return self._intersections
-
-    @intersections.setter
-    def intersections(self, value):
-        self._intersections = value
-
-    @property
     def current_area(self):
         """Return Current Area Property."""
-        if len(self._intersections) == 0:
+
+        if not self._attr_native_value:
+            return ""
+        if not self.avg:
             return ""
 
-        f = list(
-            filter(
-                lambda v: dt_util.as_local(dt_util.now()).hour >= int(v[0]),
-                self._intersections,
-            )
-        )
-        f.sort(reverse=True)
-
-        if len(f) == 0:
-            return ""
-
-        return f[0][1]
+        return "below" if self._attr_native_value < self.avg else "above"
