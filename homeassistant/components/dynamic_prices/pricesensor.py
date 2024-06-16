@@ -2,7 +2,7 @@
 
 from datetime import datetime as dt
 
-from numpy import mean
+from numpy import fix, mean
 
 from homeassistant.components.number import NumberEntity
 from homeassistant.core import HomeAssistant
@@ -32,7 +32,7 @@ class PriceSensor(NumberEntity):
     def getCurrentItem(self):
         """Get current instance from the data store."""
         if f"{DOMAIN}" not in self._hass.data:
-            return
+            return None
 
         matches = []
 
@@ -41,7 +41,9 @@ class PriceSensor(NumberEntity):
                 lambda v: dt_util.utcnow().date()
                 == dt_util.as_utc(dt.fromisoformat(v.get("dateTime"))).date()
                 and dt_util.as_utc(dt.fromisoformat(v.get("dateTime"))).hour
-                == dt_util.utcnow().hour,
+                == dt_util.utcnow().hour
+                and fix(dt_util.as_utc(dt.fromisoformat(v.get("dateTime"))).minute / 15)
+                == fix(dt_util.utcnow().minute / 15),
                 self._hass.data[f"{DOMAIN}"],
             )
         )

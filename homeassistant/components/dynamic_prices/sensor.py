@@ -9,6 +9,7 @@ import requests
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.typing import ConfigType, DiscoveryInfoType
 from homeassistant.util import dt as dt_util
 
@@ -96,11 +97,9 @@ async def async_setup_platform(
     hass.services.async_register(DOMAIN, "download", handle_download)
     hass.services.async_register(DOMAIN, "updateTarief", handle_tariefUpdate)
 
-    hass.helpers.event.async_track_time_interval(handle_download, timedelta(hours=4))
+    async_track_time_interval(hass, handle_download, timedelta(hours=4))
 
-    hass.helpers.event.async_track_time_interval(
-        handle_tariefUpdate, timedelta(seconds=10)
-    )
+    async_track_time_interval(hass, handle_tariefUpdate, timedelta(seconds=10))
 
     hass.data[f"{DOMAIN}_currentPriceSensor"] = PriceSensor(
         hass, "energy_current_price", "Current Energy Price"
